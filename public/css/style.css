@@ -1,0 +1,230 @@
+/* ============================================================
+   Variables de color y estilo general (paleta UMG)
+   ============================================================ */
+:root {
+  /* Colores corporativos */
+  --umg-rojo: #b60000;
+  --gris-claro: #f5f5f5;
+  --gris-texto: #555;
+  --blanco: #ffffff;
+
+  /* Otros */
+  --radius: 10px;
+  --sombra: 0 4px 10px rgba(0, 0, 0, 0.07);
+  --card-padding: 25px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: 'Roboto', Arial, sans-serif;
+  background: var(--gris-claro);
+  color: var(--gris-texto);
+}
+
+/* ============================================================
+   Barra superior
+   ============================================================ */
+.navbar {
+  background: var(--umg-rojo);
+  color: var(--blanco);
+  padding: 12px 20px;
+  text-align: center;
+}
+
+.navbar h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+}
+
+/* ============================================================
+   Contenedor principal
+   ============================================================ */
+.contenedor {
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 0 20px;
+}
+
+/* ============================================================
+   Títulos
+   ============================================================ */
+h2 {
+  text-align: center;
+  margin-bottom: 25px;
+  color: var(--umg-rojo);
+}
+
+/* ============================================================
+   Formularios (inscripción)
+   ============================================================ */
+form {
+  background: var(--blanco);
+  padding: var(--card-padding);
+  border-radius: var(--radius);
+  box-shadow: var(--sombra);
+}
+
+input, select {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 15px;
+  font-size: 15px;
+  border: 1px solid #ccc;
+  border-radius: var(--radius);
+}
+
+select { cursor: pointer; }
+
+/* Botones genéricos */
+button {
+  padding: 12px 20px;
+  background: var(--umg-rojo);
+  color: var(--blanco);
+  border: none;
+  font-size: 16px;
+  font-weight: 700;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.3s;
+}
+button:hover { background: #900000; }
+
+/* ============================================================
+   Contenedor de actividades (checkboxes)
+   ============================================================ */
+#contenedor-actividades {
+  margin: 20px 0;
+}
+#contenedor-actividades label {
+  display: block;
+  margin-bottom: 8px;
+}
+
+/* Mensajes de éxito/error */
+#mensaje, #estado {
+  margin-top: 18px;
+  text-align: center;
+  font-weight: 700;
+}
+
+/* ============================================================
+   Tarjetas (selector de reportes, etc.)
+   ============================================================ */
+.card {
+  background: var(--blanco);
+  padding: var(--card-padding);
+  border-radius: var(--radius);
+  box-shadow: var(--sombra);
+  margin-bottom: 20px;
+}
+
+/* ============================================================
+   Tablas de reportes
+   ============================================================ */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-top: 10px;
+  font-size: 14px;
+}
+table th, table td {
+  border: 1px solid #ccc;
+  padding: 6px 8px;
+  text-align: left;
+}
+table th {
+  background: var(--umg-rojo);
+  color: var(--blanco);
+}
+table tbody tr:nth-child(even) {
+  background: #fafafa;
+}
+
+/* Wrapper con scroll horizontal si es necesario */
+#tabla-wrapper {
+  overflow-x: auto;
+}
+
+/* ============================================================
+   Pie de página
+   ============================================================ */
+.pie {
+  text-align: center;
+  padding: 20px 10px;
+  font-size: 13px;
+  color: #888;
+}
+
+/* ============================================================
+   Responsividad (pantallas < 600 px)
+   ============================================================ */
+@media (max-width: 600px) {
+  .contenedor   { margin: 20px 10px; }
+  form, .card   { padding: 15px; }
+  .navbar h1    { font-size: 20px; }
+  h2            { font-size: 22px; }
+
+  /* Botones y select a ancho completo */
+  #btn-cargar,
+  #btn-descargar,
+  #sel-actividad {
+    width: 100%;
+    margin: 8px 0;
+  }
+
+  /* Tabla: fuente más pequeña */
+  table { font-size: 13px; }
+}
+
+/* ═════ Menú con botones píldora ══════════════════════════ */
+.menu-botones{
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  justify-content:center;
+  padding:20px 12px;
+  background:var(--gris-lt);
+}
+
+.menu-botones a{
+  position:relative;
+  padding:10px 18px;
+  font-size:.95rem;
+  font-weight:600;
+  color:#000000;
+  text-decoration:none;
+  border-radius:50px;
+  background:linear-gradient(135deg,var(--vino) 0%,var(--carmin) 100%);
+  box-shadow:0 3px 7px rgba(0,0,0,.15);
+  transition:transform .25s,box-shadow .25s,filter .25s;
+}
+
+/* efecto hover / focus */
+.menu-botones a:hover,
+.menu-botones a:focus{
+  transform:translateY(-3px) scale(1.03);
+  box-shadow:0 6px 14px rgba(0,0,0,.18);
+  filter:brightness(1.05);
+  outline:none;
+}
+
+/* estado activo (página actual) */
+.menu-botones a.activo{
+  background:linear-gradient(135deg,var(--ambar) 0%,#ffc933 100%);
+  color:var(--gris-dk);
+}
+
+/* Responsive: ocupa todo el ancho en pantallas ≤600 px */
+@media(max-width:600px){
+  .menu-botones{
+    gap:10px;
+    padding:16px 8px;
+  }
+  .menu-botones a{
+    flex:1 1 calc(50% - 10px);   /* dos columnas */
+    text-align:center;
+  }
+}

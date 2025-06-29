@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Reportes de Asistencia | UMG</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+ <header class="navbar">
+    <img src="img/logo-umg.png" alt="UMG" class="logo" width="200" height="200">
+    <h1>Reportes de Asistencia • UMG</h1>
+  </header>
+
+  <main class="contenedor">
+    <div class="card">
+      <label for="sel-actividad"><strong>Seleccione reporte:</strong></label>
+      <select id="sel-actividad">
+        <option value="general">General – Ingreso al evento</option>
+        <!-- Se llenarán los talleres vía JS -->
+      </select>
+      <button id="btn-cargar">Ver reporte</button>
+      <button id="btn-descargar" style="margin-left:10px;">Descargar CSV</button>
+    </div>
+
+    <div id="tabla-wrapper" style="overflow-x:auto; margin-top:25px;"></div>
+  </main>
+
+  <script src="js/reportes.js"></script>
+</body>
+</html>
