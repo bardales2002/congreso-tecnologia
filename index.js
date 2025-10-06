@@ -116,49 +116,83 @@ app.get('/', (_, res) => res.send('Servidor Node funcionando 🚀'));
 
 app.post('/api/inscribir', (req, res) => {
   const { nombre, correo, colegio, telefono, tipo, actividades = [] } = req.body;
-  if (tipo === 'interno' && !correo.toLowerCase().endsWith(process.env.ALLOWED_DOMAIN.toLowerCase().trim())) {
-    return res.json({ success: false, msg: `Debes usar un correo que termine en ${process.env.ALLOWED_DOMAIN}` });
-  }
-  const sqlU = `INSERT INTO usuarios (nombre, correo, colegio, telefono, tipo) VALUES (?,?,?,?,?)`;
-  db.query(sqlU, [nombre, correo, colegio, telefono, tipo], (err, r) => {
-    if (err) {
-      console.error(err);
-      return res.json({ success: false });
-    }
-    const idUsuario = r.insertId;
-    if (actividades.length) {
-      const valores = actividades.map(id => [idUsuario, id]);
-      db.query('INSERT INTO inscripciones (id_usuario,id_actividad) VALUES ?', [valores]);
-    }
-    const textoQR = `USER-${idUsuario}`;
-    QRCode.toDataURL(textoQR, { errorCorrectionLevel: 'H' }, (errQR, dataURL) => {
-      if (!errQR) {
-        db.query('UPDATE usuarios SET qr=? WHERE id=?', [dataURL, idUsuario]);
-      }
-      const base64 = (dataURL.split(',')[1] || '');
-      const qrBuffer = Buffer.from(base64, 'base64');
-      const mailOptions = {
-        from: `"Congreso de Tecnología" <${process.env.SMTP_USER}>`,
-        to: correo,
-        subject: 'Tu código QR de asistencia',
-        html: `<p>Hola <strong>${nombre}</strong>:</p>
-                  <p>Presenta este código al ingresar:</p>
-                  <img src="cid:qrimg" style="width:160px;height:160px;border:1px solid #eee;border-radius:6px;">`,
-        attachments: [
-          { filename: 'qr.png', content: qrBuffer, contentType: 'image/png', cid: 'qrimg' }
-        ]
-      };
-      transporter.sendMail(mailOptions, (errMail, info) => {
-        if (errMail) {
-          console.error('❌ Error enviando mail QR:', errMail);
-        } else {
-          console.log('✉️  Mail QR enviado:', info.response);
-        }
-      });
-      res.json({ success: true });
+
+  if (tipo === 'interno' &&
+      !correo.toLowerCase().endsWith(process.env.ALLOWED_DOMAIN.toLowerCase().trim())) {
+    return res.json({
+      success: false,
+      msg: `Debes usar un correo que termine en ${process.env.ALLOWED_DOMAIN}`
     });
-  });
+  }
+
+  const sqlUpsertUsuario = `
+    INSERT INTO usuarios (nombre, correo, colegio, telefono, tipo)
+    VALUES (?,?,?,?,?)
+    ON DUPLICATE KEY UPDATE
+      nombre=VALUES(nombre),
+      colegio=VALUES(colegio),
+      telefono=VALUES(telefono),
+      tipo=VALUES(tipo),
+      id=LAST_INSERT_ID(id)
+  `;
+
+  db.query(
+    sqlUpsertUsuario,
+    [nombre, correo, colegio, telefono, tipo],
+    (errU, rU) => {
+      if (errU) {
+        console.error('Error upsert usuarios:', errU);
+        return res.json({ success: false });
+      }
+
+      const idUsuario = rU.insertId;
+
+      const afterQRandMail = (dataURL) => {
+        const mailOptions = {
+          from: `"Congreso de Tecnología" <${process.env.SMTP_USER}>`,
+          to: correo,
+          subject: 'Tu código QR de asistencia',
+          html: `<p>Hola <strong>${nombre}</strong>:</p>
+                 <p>Presenta este código al ingresar:</p>
+                 <img src="${dataURL}" style="width:160px;height:160px;">`,
+          attachments: [{ filename: 'qr.png', path: dataURL }]
+        };
+        transporter.sendMail(mailOptions, (e) => {
+          if (e) console.error('Error sendMail:', e);
+          return res.json({ success: true });
+        });
+      };
+
+      if (actividades.length) {
+        const valores = actividades.map(id => [idUsuario, id]);
+        db.query(
+          'INSERT IGNORE INTO inscripciones (id_usuario, id_actividad) VALUES ?',
+          [valores],
+          (errIns) => {
+            if (errIns) console.error('Error inscripciones:', errIns);
+
+            const textoQR = `USER-${idUsuario}`;
+            QRCode.toDataURL(textoQR, { errorCorrectionLevel: 'H' }, (errQR, dataURL) => {
+              if (!errQR) {
+                db.query('UPDATE usuarios SET qr=? WHERE id=?', [dataURL, idUsuario]);
+              }
+              afterQRandMail(errQR ? '' : dataURL);
+            });
+          }
+        );
+      } else {
+        const textoQR = `USER-${idUsuario}`;
+        QRCode.toDataURL(textoQR, { errorCorrectionLevel: 'H' }, (errQR, dataURL) => {
+          if (!errQR) {
+            db.query('UPDATE usuarios SET qr=? WHERE id=?', [dataURL, idUsuario]);
+          }
+          afterQRandMail(errQR ? '' : dataURL);
+        });
+      }
+    }
+  );
 });
+
 
 app.get('/api/actividades', (_, res) => {
   db.query('SELECT id,tipo,nombre FROM actividades ORDER BY id', (err, rows) => {
