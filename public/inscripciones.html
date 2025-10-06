@@ -3,21 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <title>Inscripción | Congreso de Tecnología</title>
-
-  <!-- Fuente limpia y legible -->
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
-
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <header class="navbar">
     <img src="img/logo-umg.png" alt="UMG" class="logo" width="200" height="200">
-    <h1>Congreso de Tecnología • Universidad Mariano Gálvez</h1>
+    <h1>Congreso de Tecnología • Universidad Mariano Gálvez de Guatemala</h1>
+    <h1>Guastatoya, El Progreso</h1>
   </header>
 
   <main class="contenedor">
     <h2>Formulario de Inscripción</h2>
-
     <form id="form-inscripcion">
       <input type="text"  name="nombre"   placeholder="Nombre completo"   required>
       <input type="email" name="correo"   placeholder="Correo institucional o personal" required>
@@ -29,10 +26,8 @@
         <option value="externo">Externo</option>
       </select>
 
-      <!-- Talleres / competencias -->
       <div id="contenedor-actividades">
-        <p><strong>Elige tus talleres / competencias:</strong></p>
-        <!-- checkboxes generados por JS -->
+        <p><strong>Elige el taller / competencia:</strong></p>
       </div>
 
       <button type="submit">Inscribirse</button>
@@ -42,7 +37,7 @@
   </main>
 
   <footer class="pie">
-    <small>© 2025 Universidad Mariano Gálvez de Guatemala · Facultad de Ingeniería en Sistemas</small>
+    <p>© 2025 Universidad Mariano Gálvez de Guatemala · Facultad de Ingeniería en Sistemas</p>
   </footer>
 
   <script src="js/inscripciones.js"></script>

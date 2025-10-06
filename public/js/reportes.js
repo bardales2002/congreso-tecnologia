@@ -1,4 +1,3 @@
-/* Utilidades ---------------------------------------------- */
 function crearTabla(data) {
   if (!data.length) return '<p>No hay registros.</p>';
 
@@ -15,7 +14,6 @@ function crearTabla(data) {
   return html;
 }
 
-/* === pega aquí la nueva función === */
 function formatearFechaISO(iso) {
   const d = new Date(iso);
   return d.toLocaleString('es-ES', {
@@ -40,7 +38,6 @@ function descargarCSV(data, nombre) {
   URL.revokeObjectURL(url);
 }
 
-/* Cargar selector de actividades --------------------------- */
 async function poblarSelect() {
   const sel = document.getElementById('sel-actividad');
   const res = await fetch('/api/actividades');
@@ -52,7 +49,6 @@ async function poblarSelect() {
 }
 poblarSelect();
 
-/* Manejar clic en "Ver reporte" ---------------------------- */
 document.getElementById('btn-cargar').addEventListener('click', async () => {
   const sel = document.getElementById('sel-actividad');
   const tabla = document.getElementById('tabla-wrapper');
@@ -67,7 +63,6 @@ document.getElementById('btn-cargar').addEventListener('click', async () => {
   url = '/api/reporte/actividad/' + sel.value;
   const json = await (await fetch(url)).json();
 
-  // Formatear la fecha/hora
   detalle = json.detalle.map(r => ({
     ...r,
     fecha_hora: r.fecha_hora ? formatearFechaISO(r.fecha_hora) : r.fecha_hora
@@ -79,11 +74,9 @@ document.getElementById('btn-cargar').addEventListener('click', async () => {
     '<h3>Resumen</h3>'   + crearTabla(resumen) +
     '<h3>Detalle</h3>'    + crearTabla(detalle);
 
-  // Guarda en variable global para descarga
   window.__ultimoCSV = { detalle, resumen, nombre: sel.options[sel.selectedIndex].text };
 });
 
-/* Descargar CSV ------------------------------------------- */
 document.getElementById('btn-descargar').addEventListener('click', () => {
   if (!window.__ultimoCSV) return alert('Primero haga clic en "Ver reporte".');
   const { detalle, nombre } = window.__ultimoCSV;

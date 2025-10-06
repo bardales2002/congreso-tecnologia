@@ -5,38 +5,37 @@
   <title>Escáner QR | Congreso UMG</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
 
-  <!-- Estilo global -->
   <link rel="stylesheet" href="css/style.css">
 
-  <!-- 1) Librería html5-qrcode  —  DEBE ir antes que tu script -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
 </head>
 
 <body>
   <header class="navbar">
     <img src="img/logo-umg.png" alt="UMG" class="logo" width="200" height="200">
-    <h1>Congreso de Tecnología • Universidad Mariano Gálvez</h1>
+    <h1>Congreso de Tecnología • Universidad Mariano Gálvez de Guatemala</h1>
+    <h1>Guastatoya, El Progreso</h1>
   </header>
 
   <main class="contenedor" style="max-width:480px">
 
-    <!-- Selector de actividad -->
     <div style="text-align:center;margin-bottom:18px">
       <label for="sel-actividad"><strong>Actividad:</strong></label><br>
       <select id="sel-actividad" class="input" required style="min-width:280px"></select>
     </div>
 
-    <!-- Vista de la cámara -->
     <div id="qr-reader" style="width:300px;margin:auto;"></div>
 
-    <!-- Mensaje de estado -->
     <p id="estado" style="text-align:center;font-weight:700;margin-top:14px;"></p>
 
   </main>
 
 <script src="js/lib/html5-qrcode.min.js"></script>
 
-  <!-- 2) Tu lógica -->
+  <footer class="pie">
+    <p>© 2025 Universidad Mariano Gálvez de Guatemala · Facultad de Ingeniería en Sistemas</p>
+  </footer>
+
   <script src="js/escanear.js"></script>
 </body>
 </html>

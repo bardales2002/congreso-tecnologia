@@ -1,14 +1,6 @@
-/* =========================================================
-   Escáner de códigos QR  –  Congreso de Tecnología UMG
-   • Llena el selector con /api/actividades
-   • Envía { qr, idActividad } a /api/asistir
-   • Muestra feedback y reinicia en 3 s
-   ========================================================= */
-
 const estado = document.getElementById('estado');
 const selAct = document.getElementById('sel-actividad');
 
-/* 0. Cargar lista de actividades --------------------------- */
 fetch('/api/actividades')
   .then(r => r.json())
   .then(lista => {
@@ -24,7 +16,6 @@ fetch('/api/actividades')
     estado.textContent = '❌ No se pudo cargar la lista de actividades';
   });
 
-/* 1. Función cuando se lee un QR --------------------------- */
 function onScanSuccess(decodedText) {
   if (!selAct.value) {
     estado.style.color = 'red';
@@ -32,7 +23,7 @@ function onScanSuccess(decodedText) {
     return;
   }
 
-  html5QrcodeScanner.clear();               // Detener la cámara
+  html5QrcodeScanner.clear();               
   estado.style.color = 'black';
   estado.textContent = '⏳ Registrando asistencia…';
 
@@ -40,8 +31,8 @@ function onScanSuccess(decodedText) {
     method : 'POST',
     headers: { 'Content-Type':'application/json' },
     body   : JSON.stringify({
-      qr          : decodedText,            // p.ej.  USER-7
-      idActividad : Number(selAct.value)    // taller/competencia elegida
+      qr          : decodedText,            
+      idActividad : Number(selAct.value)    
     })
   })
   .then(r => r.json())
@@ -62,7 +53,6 @@ function onScanSuccess(decodedText) {
   });
 }
 
-/* 2. Iniciar el lector (cámara) ---------------------------- */
 const html5QrcodeScanner = new Html5QrcodeScanner(
   'qr-reader',
   { fps: 10, qrbox: 200 }

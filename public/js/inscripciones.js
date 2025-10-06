@@ -1,6 +1,3 @@
-/* ───────────────────────────────────────────────
-   1. Cargar actividades al abrir la página
-   ─────────────────────────────────────────────── */
 async function cargarActividades() {
   const res   = await fetch('/api/actividades');
   const lista = await res.json();
@@ -18,9 +15,6 @@ async function cargarActividades() {
 }
 cargarActividades();
 
-/* ───────────────────────────────────────────────
-   2. Enviar inscripción + actividades seleccionadas
-   ─────────────────────────────────────────────── */
 document.getElementById('form-inscripcion')
   .addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -32,10 +26,9 @@ document.getElementById('form-inscripcion')
       colegio : form.colegio.value,
       telefono: form.telefono.value,
       tipo    : form.tipo.value,
-      // → nuevo: IDs de actividades marcadas
       actividades: Array.from(
         document.querySelectorAll('#contenedor-actividades input:checked')
-      ).map(cb => Number(cb.value))      // p.ej. [1,3]
+      ).map(cb => Number(cb.value))      
     };
 
     try {
@@ -51,7 +44,6 @@ document.getElementById('form-inscripcion')
         msg.style.color = 'green';
         msg.textContent = '✅ Inscripción exitosa';
         form.reset();
-        // desmarca los checkboxes
         document.querySelectorAll('#contenedor-actividades input')
                 .forEach(cb => cb.checked = false);
       } else {

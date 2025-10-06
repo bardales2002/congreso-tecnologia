@@ -1,11 +1,9 @@
-/* Rellenar selector con últimos 5 años */
 const sel = document.getElementById('sel-anio');
 const anioActual = new Date().getFullYear();
 for (let y = anioActual; y >= anioActual - 4; y--) {
   sel.insertAdjacentHTML('beforeend', `<option value="${y}">${y}</option>`);
 }
 
-/* Cargar resultados al abrir y al hacer clic */
 document.getElementById('btn-cargar').addEventListener('click', cargar);
 cargar();
 
