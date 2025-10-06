@@ -371,6 +371,53 @@ app.post('/api/enviar-diploma/:id', (req, res) => {
   });
 });
 
+// --- RUTAS DE DIAGNÓSTICO PARA RESEND ---
+
+// 1) Verifica conectividad y (opcional) dispara un correo de prueba
+app.get('/health/email', async (req, res) => {
+  try {
+    const useResend = !!process.env.RESEND_API_KEY;
+    const using = useResend ? 'Resend' : 'SMTP';
+    const send = req.query.send === '1';
+    const to = (req.query.to || '').trim();
+
+    if (send && useResend) {
+      const { data, error } = await resend.emails.send({
+        from: `Congreso <${process.env.FROM_EMAIL}>`,
+        to: [to || process.env.SMTP_USER || ''],
+        subject: 'Prueba de correo (health/email)',
+        html: '<p>Hola 👋 — Esto es una prueba desde /health/email.</p>'
+      });
+      if (error) return res.status(500).json({ ok: false, using, error });
+      return res.json({ ok: true, using, data });
+    }
+
+    return res.json({ ok: true, using });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// 2) Enviar un correo de prueba siempre (más explícito)
+app.get('/test/send', async (req, res) => {
+  const to = (req.query.to || '').trim();
+  if (!to) return res.status(400).json({ ok: false, error: 'Agrega ?to=tu_correo' });
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: `Congreso <${process.env.FROM_EMAIL}>`,
+      to: [to],
+      subject: 'Prueba directa: /test/send',
+      html: '<h3>✅ Resend funcionando</h3><p>Este es un correo de prueba.</p>'
+    });
+    if (error) return res.status(500).json({ ok: false, error });
+    res.json({ ok: true, data });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+
 /* ---------- START ---------- */
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);
