@@ -83,7 +83,6 @@ app.use(express.static('public'));
 
 const db = mysql.createConnection({
   host: process.env.DB_HOST,
-  port: Number(process.env.DB_PORT || 3306),
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
@@ -103,6 +102,14 @@ const transporter = nodemailer.createTransport({
   port: Number(process.env.SMTP_PORT),
   secure: process.env.SMTP_SECURE === 'true',
   auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+});
+
+transporter.verify((err, success) => {
+  if (err) {
+    console.error('❌ SMTP verify:', err.message);
+  } else {
+    console.log('✅ SMTP listo para enviar (verify ok)');
+  }
 });
 
 app.get('/', (_, res) => res.send('Servidor Node funcionando 🚀'));
@@ -128,16 +135,26 @@ app.post('/api/inscribir', (req, res) => {
       if (!errQR) {
         db.query('UPDATE usuarios SET qr=? WHERE id=?', [dataURL, idUsuario]);
       }
+      const base64 = (dataURL.split(',')[1] || '');
+      const qrBuffer = Buffer.from(base64, 'base64');
       const mailOptions = {
         from: `"Congreso de Tecnología" <${process.env.SMTP_USER}>`,
         to: correo,
         subject: 'Tu código QR de asistencia',
         html: `<p>Hola <strong>${nombre}</strong>:</p>
                   <p>Presenta este código al ingresar:</p>
-                  <img src="${dataURL}" style="width:160px;height:160px;">`,
-        attachments: [{ filename: 'qr.png', path: dataURL }]
+                  <img src="cid:qrimg" style="width:160px;height:160px;border:1px solid #eee;border-radius:6px;">`,
+        attachments: [
+          { filename: 'qr.png', content: qrBuffer, contentType: 'image/png', cid: 'qrimg' }
+        ]
       };
-      transporter.sendMail(mailOptions, () => {});
+      transporter.sendMail(mailOptions, (errMail, info) => {
+        if (errMail) {
+          console.error('❌ Error enviando mail QR:', errMail);
+        } else {
+          console.log('✉️  Mail QR enviado:', info.response);
+        }
+      });
       res.json({ success: true });
     });
   });
@@ -290,7 +307,10 @@ function getResultados(anio, res) {
     WHERE  r.anio = ?
     ORDER  BY act.id, r.puesto;`;
   db.query(sql, [anio], (err, rows) => {
-    if (err) return res.status(500).json([]);
+    if (err) {
+      console.error(err);
+      return res.status(500).json([]);
+    }
     const mapa = {};
     rows.forEach(r => {
       if (!mapa[r.act_id]) mapa[r.act_id] = { actividad: r.actividad, ganadores: [] };
