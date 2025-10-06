@@ -11,7 +11,9 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-/* ---------- PDF DIPLOMA ---------- */
+/* =========================
+ *  PDF – DIPLOMA
+ * ========================= */
 function generarDiploma({ nombre, actividad, fecha }, cb) {
   const doc = new PDFDocument({ size: 'A4', margin: 36 });
   const chunks = [];
@@ -31,105 +33,91 @@ function generarDiploma({ nombre, actividad, fecha }, cb) {
   const logoExists = fs.existsSync(logoPath);
 
   doc.save().lineWidth(2.2).roundedRect(24, 24, W - 48, H - 48, 12).stroke(rojo).restore();
-
   const bandH = 120;
   doc.save().rect(0, 0, W, bandH).fill(rojo).restore();
 
-  doc
-    .fillColor('#fff')
-    .font('Helvetica-Bold')
-    .fontSize(18)
+  doc.fillColor('#fff').font('Helvetica-Bold').fontSize(18)
     .text('Universidad Mariano Gálvez de Guatemala', 40, 24, { width: W - 80, align: 'center' })
     .moveDown(0.2)
-    .font('Helvetica')
-    .fontSize(14)
+    .font('Helvetica').fontSize(14)
     .text('Facultad de Ingeniería en Sistemas', { width: W - 80, align: 'center' });
 
-  const cx = W / 2;
-  const cy = bandH + 55;
-  const logoSize = 110;
-
+  const cx = W / 2, cy = bandH + 55, logoSize = 110;
   doc.save().circle(cx, cy, logoSize / 2 + 8).lineWidth(4).stroke('#ffffff').restore();
   if (logoExists) {
-    doc.save();
-    doc.circle(cx, cy, logoSize / 2).clip();
+    doc.save(); doc.circle(cx, cy, logoSize / 2).clip();
     doc.image(logoPath, cx - logoSize / 2, cy - logoSize / 2, { width: logoSize, height: logoSize });
     doc.restore();
   }
 
   const topAfterLogo = cy + logoSize / 2 + 24;
-
-  doc
-    .fillColor(grisTxt)
-    .font('Helvetica-Bold')
-    .fontSize(26)
+  doc.fillColor(grisTxt).font('Helvetica-Bold').fontSize(26)
     .text('Diploma de Participación', 40, topAfterLogo, { width: W - 80, align: 'center' });
-
-  const decoW = 140;
-  const decoX = (W - decoW) / 2;
+  const decoW = 140, decoX = (W - decoW) / 2;
   doc.save().moveTo(decoX, topAfterLogo + 34).lineTo(decoX + decoW, topAfterLogo + 34).lineWidth(3).stroke(rojo).restore();
 
   doc.font('Helvetica').fontSize(14).fillColor('#374151').text('Se otorga a', 40, topAfterLogo + 60, { width: W - 80, align: 'center' });
-
   doc.font('Helvetica-Bold').fontSize(22).fillColor(rojo).text(nombre, { width: W - 80, align: 'center', underline: true });
   doc.moveDown(1.2);
-
   doc.font('Helvetica').fontSize(14).fillColor('#111')
-    .text(`Por su destacada participación en ${actividad}.`, { width: W - 120, align: 'center' });
-
+     .text(`Por su destacada participación en ${actividad}.`, { width: W - 120, align: 'center' });
   doc.moveDown(1.5);
   doc.font('Helvetica-Oblique').fontSize(12).fillColor('#111')
-    .text(`Guastatoya, ${fecha}`, { width: W - 80, align: 'right' });
+     .text(`Guastatoya, ${fecha}`, { width: W - 80, align: 'right' });
 
-  const yFirmas = H - 150;
-  const sep = 200;
-  const x1 = cx - sep - 40;
-  const x2 = cx + 40;
+  const yFirmas = H - 150, sep = 200, x1 = cx - sep - 40, x2 = cx + 40;
+  doc.save().lineWidth(1.2).strokeColor(grisClaro)
+     .moveTo(x1, yFirmas).lineTo(x1 + 180, yFirmas).stroke()
+     .moveTo(x2, yFirmas).lineTo(x2 + 180, yFirmas).stroke().restore();
 
-  doc.save()
-    .lineWidth(1.2)
-    .strokeColor(grisClaro)
-    .moveTo(x1, yFirmas).lineTo(x1 + 180, yFirmas).stroke()
-    .moveTo(x2, yFirmas).lineTo(x2 + 180, yFirmas).stroke()
-    .restore();
-
-  doc
-    .font('Helvetica-Bold').fontSize(11).fillColor('#111')
-    .text('Decano(a)', x1, yFirmas + 6, { width: 180, align: 'center' })
-    .text('Coordinador(a)', x2, yFirmas + 6, { width: 180, align: 'center' });
-
+  doc.font('Helvetica-Bold').fontSize(11).fillColor('#111')
+     .text('Decano(a)', x1, yFirmas + 6, { width: 180, align: 'center' })
+     .text('Coordinador(a)', x2, yFirmas + 6, { width: 180, align: 'center' });
   doc.save().rect(0, H - 16, W, 16).fill(rojoOsc).restore();
 
   doc.end();
 }
 
-/* ---------- EMAIL (Resend) ---------- */
+/* =========================
+ *  EMAIL – RESEND
+ * ========================= */
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@resend.dev';
 
 async function enviarEmail({ to, subject, html, attachments = [] }) {
-  const resp = await resend.emails.send({
+  const { data, error } = await resend.emails.send({
     from: `Congreso UMG <${FROM_EMAIL}>`,
-    to,
+    to: Array.isArray(to) ? to : [to],
     subject,
     html,
-    attachments // [{ filename, content: Buffer }]
+    attachments // [{ filename, content (base64), contentType, contentId? }]
   });
-  if (resp.error) throw new Error(resp.error.message || 'Error enviando correo');
-  return resp;
+  if (error) throw new Error(error.message || 'Error enviando correo');
+  return data;
 }
 
-async function enviarQRCorreo({ nombre, correo, dataURL }) {
+// Enviar QR con CID (inline)
+// qrBuffer: Buffer PNG del QR
+async function enviarQRConResend({ to, nombre, qrBuffer }) {
   const html = `
     <p>Hola <strong>${nombre}</strong>:</p>
     <p>Presenta este código al ingresar:</p>
-    <img src="${dataURL}" style="width:160px;height:160px;" />
+    <img src="cid:qrimg" width="160" height="160" alt="QR de asistencia" />
     <p>Universidad Mariano Gálvez de Guatemala</p>
   `;
+
   await enviarEmail({
-    to: correo,
+    to,
     subject: 'Tu código QR de asistencia',
-    html
+    html,
+    attachments: [
+      {
+        filename: 'qr.png',
+        content: qrBuffer.toString('base64'), // Base64
+        contentType: 'image/png',
+        contentId: 'qrimg' // Debe coincidir con el cid del <img>
+      }
+    ]
   });
 }
 
@@ -144,16 +132,19 @@ async function enviarDiplomaCorreo(datos, correoDestino, bufferPDF) {
     to: correoDestino,
     subject: 'Diploma de participación',
     html,
-    attachments: [{ filename: 'diploma.pdf', content: bufferPDF }]
+    attachments: [
+      { filename: 'diploma.pdf', content: bufferPDF.toString('base64'), contentType: 'application/pdf' }
+    ]
   });
 }
 
-/* ---------- APP ---------- */
+/* =========================
+ *  APP & DB
+ * ========================= */
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-/* ---------- DB ---------- */
 const db = mysql.createConnection({
   host: process.env.DB_HOST,
   port: Number(process.env.DB_PORT || 3306),
@@ -164,25 +155,42 @@ const db = mysql.createConnection({
   connectTimeout: 15000
 });
 
-console.log('MySQL destino →', { host: process.env.DB_HOST, port: Number(process.env.DB_PORT || 3306), db: process.env.DB_NAME });
+console.log('MySQL destino →', {
+  host: process.env.DB_HOST,
+  port: Number(process.env.DB_PORT || 3306),
+  db: process.env.DB_NAME
+});
 
 db.connect(err => {
   if (err) { console.error('❌ MySQL:', err); process.exit(1); }
   console.log('✅ Conectado a MySQL');
 });
 
-/* ---------- RUTAS ---------- */
+/* =========================
+ *  RUTAS
+ * ========================= */
 app.get('/', (_, res) => res.send('Servidor Node funcionando 🚀'));
 
-/* Health email (prueba Resend) */
-app.get('/health/email', async (_, res) => {
+// Health/email – prueba rápida y, opcional, envío de test (?send=1&to=...)
+app.get('/health/email', async (req, res) => {
   try {
-    // prueba mínima: enviar un mail a tu propio remitente (una vez manual)
-    // para solo verificar credenciales sin “spamear”, respondemos sin enviar:
-    res.json({ ok: true, using: 'Resend' });
+    const using = 'Resend';
+    if (req.query.send === '1') {
+      const to = (req.query.to || '').trim();
+      const html = '<p>Hola 👋 — Esto es una prueba desde /health/email con Resend.</p>';
+      await enviarEmail({ to: to || process.env.SMTP_USER || '', subject: 'Prueba Resend', html });
+    }
+    res.json({ ok: true, using });
   } catch (e) {
     res.json({ ok: false, using: 'Resend', lastError: e.message });
   }
+});
+
+app.get('/api/actividades', (_, res) => {
+  db.query('SELECT id,tipo,nombre FROM actividades ORDER BY id', (err, rows) => {
+    if (err) return res.status(500).json([]);
+    res.json(rows);
+  });
 });
 
 app.post('/api/inscribir', (req, res) => {
@@ -193,39 +201,38 @@ app.post('/api/inscribir', (req, res) => {
   }
 
   const sqlU = `INSERT INTO usuarios (nombre, correo, colegio, telefono, tipo) VALUES (?,?,?,?,?)`;
-  db.query(sqlU, [nombre, correo, colegio, telefono, tipo], (err, r) => {
-    if (err) {
-      console.error(err);
-      return res.json({ success: false });
-    }
+  db.query(sqlU, [nombre, correo, colegio, telefono, tipo], async (err, r) => {
+    if (err) { console.error(err); return res.json({ success: false }); }
+
     const idUsuario = r.insertId;
 
+    // Inscribir en actividades (si vienen)
     if (actividades.length) {
       const valores = actividades.map(id => [idUsuario, id]);
       db.query('INSERT INTO inscripciones (id_usuario,id_actividad) VALUES ?', [valores]);
     }
 
-    const textoQR = `USER-${idUsuario}`;
-    QRCode.toDataURL(textoQR, { errorCorrectionLevel: 'H' }, async (errQR, dataURL) => {
-      if (!errQR) {
-        db.query('UPDATE usuarios SET qr=? WHERE id=?', [dataURL, idUsuario]);
-      }
+    try {
+      // Generar QR como BUFFER (PNG) para el CID
+      const textoQR = `USER-${idUsuario}`;
+      const qrBuffer = await new Promise((resolve, reject) => {
+        QRCode.toBuffer(textoQR, { type: 'png', width: 256, errorCorrectionLevel: 'H' },
+          (e, buf) => (e ? reject(e) : resolve(buf)));
+      });
 
-      try {
-        await enviarQRCorreo({ nombre, correo, dataURL });
-        res.json({ success: true });
-      } catch (e) {
-        console.error('✉️ Error enviando QR:', e.message);
-        res.json({ success: true, warn: 'Inscrito pero no se pudo enviar el correo.' });
-      }
-    });
-  });
-});
+      // (opcional) guardar también el DataURL en la DB para usarlo en paneles
+      const dataURL = `data:image/png;base64,${qrBuffer.toString('base64')}`;
+      db.query('UPDATE usuarios SET qr=? WHERE id=?', [dataURL, idUsuario]);
 
-app.get('/api/actividades', (_, res) => {
-  db.query('SELECT id,tipo,nombre FROM actividades ORDER BY id', (err, rows) => {
-    if (err) return res.status(500).json([]);
-    res.json(rows);
+      // Enviar correo con QR inline (CID)
+      await enviarQRConResend({ to: correo, nombre, qrBuffer });
+
+      res.json({ success: true });
+    } catch (e) {
+      console.error('✉️ Error enviando QR:', e.message);
+      // No rompemos la inscripción si el correo falla
+      res.json({ success: true, warn: 'Inscrito, pero no se pudo enviar el correo.' });
+    }
   });
 });
 
@@ -252,7 +259,7 @@ app.post('/api/asistir', (req, res) => {
           JOIN   usuarios      u   ON u.id=i.id_usuario
           JOIN   actividades   act ON act.id=i.id_actividad
           WHERE  i.id_usuario=? AND i.id_actividad=? LIMIT 1`;
-        db.query(qSel, [idUsuario, idActividad], async (e3, rowsIns) => {
+        db.query(qSel, [idUsuario, idActividad], (e3, rowsIns) => {
           if (e3 || !rowsIns.length) return res.json({ ok: true });
 
           const ins = rowsIns[0];
@@ -261,7 +268,6 @@ app.post('/api/asistir', (req, res) => {
           const datosPDF = { nombre: ins.nombre, actividad: ins.actividad, fecha: ins.fecha };
           generarDiploma(datosPDF, async (errPDF, bufferPDF) => {
             if (errPDF) return res.json({ ok: true });
-
             try {
               await enviarDiplomaCorreo(datosPDF, ins.correo, bufferPDF);
               db.query('UPDATE inscripciones SET diploma_enviado=1 WHERE id=?', [ins.id]);
@@ -343,82 +349,9 @@ app.get('/api/diploma/:id', (req, res) => {
   });
 });
 
-app.post('/api/enviar-diploma/:id', (req, res) => {
-  const idIns = Number(req.params.id);
-  if (isNaN(idIns)) return res.status(400).json({ ok: false });
-
-  const sql = `
-    SELECT i.id, u.nombre, u.correo, act.nombre AS actividad,
-           DATE_FORMAT(NOW(),'%d/%m/%Y') AS fecha
-    FROM   inscripciones i
-    JOIN   usuarios      u   ON u.id  = i.id_usuario
-    JOIN   actividades   act ON act.id = i.id_actividad
-    WHERE  i.id = ?`;
-  db.query(sql, [idIns], (err, rs) => {
-    if (err || !rs.length) return res.status(404).json({ ok: false });
-
-    const datos = rs[0];
-    generarDiploma(datos, async (errPDF, bufferPDF) => {
-      if (errPDF) return res.status(500).json({ ok: false });
-      try {
-        await enviarDiplomaCorreo(datos, datos.correo, bufferPDF);
-        return res.json({ ok: true });
-      } catch (e) {
-        console.error('✉️ Error enviando diploma (manual):', e.message);
-        return res.status(500).json({ ok: false });
-      }
-    });
-  });
-});
-
-// --- RUTAS DE DIAGNÓSTICO PARA RESEND ---
-
-// 1) Verifica conectividad y (opcional) dispara un correo de prueba
-app.get('/health/email', async (req, res) => {
-  try {
-    const useResend = !!process.env.RESEND_API_KEY;
-    const using = useResend ? 'Resend' : 'SMTP';
-    const send = req.query.send === '1';
-    const to = (req.query.to || '').trim();
-
-    if (send && useResend) {
-      const { data, error } = await resend.emails.send({
-        from: `Congreso <${process.env.FROM_EMAIL}>`,
-        to: [to || process.env.SMTP_USER || ''],
-        subject: 'Prueba de correo (health/email)',
-        html: '<p>Hola 👋 — Esto es una prueba desde /health/email.</p>'
-      });
-      if (error) return res.status(500).json({ ok: false, using, error });
-      return res.json({ ok: true, using, data });
-    }
-
-    return res.json({ ok: true, using });
-  } catch (e) {
-    return res.status(500).json({ ok: false, error: e.message });
-  }
-});
-
-// 2) Enviar un correo de prueba siempre (más explícito)
-app.get('/test/send', async (req, res) => {
-  const to = (req.query.to || '').trim();
-  if (!to) return res.status(400).json({ ok: false, error: 'Agrega ?to=tu_correo' });
-
-  try {
-    const { data, error } = await resend.emails.send({
-      from: `Congreso <${process.env.FROM_EMAIL}>`,
-      to: [to],
-      subject: 'Prueba directa: /test/send',
-      html: '<h3>✅ Resend funcionando</h3><p>Este es un correo de prueba.</p>'
-    });
-    if (error) return res.status(500).json({ ok: false, error });
-    res.json({ ok: true, data });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-
-/* ---------- START ---------- */
+/* =========================
+ *  START
+ * ========================= */
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });
