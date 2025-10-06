@@ -11,9 +11,6 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-/* =========================
- *  PDF – DIPLOMA
- * ========================= */
 function generarDiploma({ nombre, actividad, fecha }, cb) {
   const doc = new PDFDocument({ size: 'A4', margin: 36 });
   const chunks = [];
@@ -78,9 +75,6 @@ function generarDiploma({ nombre, actividad, fecha }, cb) {
   doc.end();
 }
 
-/* =========================
- *  EMAIL – RESEND
- * ========================= */
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@resend.dev';
 
@@ -90,14 +84,12 @@ async function enviarEmail({ to, subject, html, attachments = [] }) {
     to: Array.isArray(to) ? to : [to],
     subject,
     html,
-    attachments // [{ filename, content (base64), contentType, contentId? }]
+    attachments 
   });
   if (error) throw new Error(error.message || 'Error enviando correo');
   return data;
 }
 
-// Enviar QR con CID (inline)
-// qrBuffer: Buffer PNG del QR
 async function enviarQRConResend({ to, nombre, qrBuffer }) {
   const html = `
     <p>Hola <strong>${nombre}</strong>:</p>
@@ -113,9 +105,9 @@ async function enviarQRConResend({ to, nombre, qrBuffer }) {
     attachments: [
       {
         filename: 'qr.png',
-        content: qrBuffer.toString('base64'), // Base64
+        content: qrBuffer.toString('base64'), 
         contentType: 'image/png',
-        contentId: 'qrimg' // Debe coincidir con el cid del <img>
+        contentId: 'qrimg' 
       }
     ]
   });
@@ -138,9 +130,6 @@ async function enviarDiplomaCorreo(datos, correoDestino, bufferPDF) {
   });
 }
 
-/* =========================
- *  APP & DB
- * ========================= */
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
@@ -166,12 +155,8 @@ db.connect(err => {
   console.log('✅ Conectado a MySQL');
 });
 
-/* =========================
- *  RUTAS
- * ========================= */
 app.get('/', (_, res) => res.send('Servidor Node funcionando 🚀'));
 
-// Health/email – prueba rápida y, opcional, envío de test (?send=1&to=...)
 app.get('/health/email', async (req, res) => {
   try {
     const using = 'Resend';
@@ -206,31 +191,26 @@ app.post('/api/inscribir', (req, res) => {
 
     const idUsuario = r.insertId;
 
-    // Inscribir en actividades (si vienen)
     if (actividades.length) {
       const valores = actividades.map(id => [idUsuario, id]);
       db.query('INSERT INTO inscripciones (id_usuario,id_actividad) VALUES ?', [valores]);
     }
 
     try {
-      // Generar QR como BUFFER (PNG) para el CID
       const textoQR = `USER-${idUsuario}`;
       const qrBuffer = await new Promise((resolve, reject) => {
         QRCode.toBuffer(textoQR, { type: 'png', width: 256, errorCorrectionLevel: 'H' },
           (e, buf) => (e ? reject(e) : resolve(buf)));
       });
 
-      // (opcional) guardar también el DataURL en la DB para usarlo en paneles
       const dataURL = `data:image/png;base64,${qrBuffer.toString('base64')}`;
       db.query('UPDATE usuarios SET qr=? WHERE id=?', [dataURL, idUsuario]);
 
-      // Enviar correo con QR inline (CID)
       await enviarQRConResend({ to: correo, nombre, qrBuffer });
 
       res.json({ success: true });
     } catch (e) {
       console.error('✉️ Error enviando QR:', e.message);
-      // No rompemos la inscripción si el correo falla
       res.json({ success: true, warn: 'Inscrito, pero no se pudo enviar el correo.' });
     }
   });
@@ -349,9 +329,6 @@ app.get('/api/diploma/:id', (req, res) => {
   });
 });
 
-/* =========================
- *  START
- * ========================= */
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });
