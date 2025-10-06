@@ -2,7 +2,11 @@
   "name": "congreso-tecnologia",
   "version": "1.0.0",
   "description": "Sistema de Gestión del Congreso de Tecnología - UMG",
+  "private": false,
   "main": "index.js",
+  "engines": {
+    "node": ">=18 <21"
+  },
   "scripts": {
     "start": "node index.js",
     "dev": "node index.js",
