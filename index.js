@@ -83,6 +83,7 @@ app.use(express.static('public'));
 
 const db = mysql.createConnection({
   host: process.env.DB_HOST,
+  port: Number(process.env.DB_PORT || 3306),
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
@@ -289,10 +290,7 @@ function getResultados(anio, res) {
     WHERE  r.anio = ?
     ORDER  BY act.id, r.puesto;`;
   db.query(sql, [anio], (err, rows) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json([]);
-    }
+    if (err) return res.status(500).json([]);
     const mapa = {};
     rows.forEach(r => {
       if (!mapa[r.act_id]) mapa[r.act_id] = { actividad: r.actividad, ganadores: [] };
