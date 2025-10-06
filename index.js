@@ -11,7 +11,6 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-/* ========= PDF diploma (sin marca de agua) ========= */
 function generarDiploma({ nombre, actividad, fecha }, cb) {
   const doc = new PDFDocument({ size: 'A4', margin: 36 });
   const chunks = [];
@@ -57,7 +56,7 @@ function generarDiploma({ nombre, actividad, fecha }, cb) {
   doc.font('Helvetica-Oblique').fontSize(12).fillColor('#111')
     .text(`Guastatoya, ${fecha}`, { width: W - 80, align: 'right' });
 
-  const yFirmas = H - 150, sep = 200, x1 = cx - sep - 40, x2 = cx + 40;
+  const yFirmas = H - 150, sep = 200, x1 = (W/2) - sep - 40, x2 = (W/2) + 40;
   doc.save().lineWidth(1.2).strokeColor(grisClaro)
     .moveTo(x1, yFirmas).lineTo(x1 + 180, yFirmas).stroke()
     .moveTo(x2, yFirmas).lineTo(x2 + 180, yFirmas).stroke().restore();
@@ -69,7 +68,6 @@ function generarDiploma({ nombre, actividad, fecha }, cb) {
   doc.end();
 }
 
-/* ========= Email ========= */
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: Number(process.env.SMTP_PORT || 465),
@@ -77,29 +75,15 @@ const transporter = nodemailer.createTransport({
   auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
 });
 
-function enviarDiploma(datos, correoDestino, cb) {
-  generarDiploma(datos, (errPDF, bufferPDF) => {
-    if (errPDF) return cb(errPDF);
-    const mailOptions = {
-      from: `"Congreso de Tecnología" <${process.env.SMTP_USER}>`,
-      to: correoDestino,
-      subject: 'Diploma de participación',
-      html: `<p>Hola <strong>${datos.nombre}</strong>:</p>
-             <p>Hacemos entrega de tu diploma de ${datos.actividad}.</p>
-             <p>¡Gracias por participar!</p>
-             <p>Universidad Mariano Gálvez de Guatemala</p>`,
-      attachments: [{ filename: 'diploma.pdf', content: bufferPDF }]
-    };
-    transporter.sendMail(mailOptions, cb);
-  });
-}
+transporter.verify((err, ok) => {
+  if (err) console.error('✉️  SMTP NO listo:', err.message);
+  else console.log('✉️  SMTP listo para enviar');
+});
 
-/* ========= Express ========= */
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-/* ========= MySQL (acepta URL o variables sueltas + SSL) ========= */
 let dbConfig;
 if (process.env.MYSQL_PUBLIC_URL || process.env.MYSQL_URL || process.env.DATABASE_URL) {
   const raw = process.env.MYSQL_PUBLIC_URL || process.env.MYSQL_URL || process.env.DATABASE_URL;
@@ -131,20 +115,13 @@ if (process.env.MYSQL_PUBLIC_URL || process.env.MYSQL_URL || process.env.DATABAS
   };
 }
 
-console.log('MySQL destino →', {
-  host: dbConfig.host,
-  port: dbConfig.port,
-  db: dbConfig.database
-});
-
+console.log('MySQL destino →', { host: dbConfig.host, port: dbConfig.port, db: dbConfig.database });
 const db = mysql.createConnection(dbConfig);
-
 db.connect(err => {
   if (err) { console.error('❌ MySQL:', err); process.exit(1); }
   console.log('✅ Conectado a MySQL');
 });
 
-/* ========= Rutas ========= */
 app.get('/', (_, res) => res.send('Servidor Node funcionando 🚀'));
 
 app.post('/api/inscribir', (req, res) => {
@@ -155,10 +132,10 @@ app.post('/api/inscribir', (req, res) => {
     return res.json({ success:false, msg:`Debes usar un correo que termine en ${process.env.ALLOWED_DOMAIN}` });
   }
 
-  const sqlU = `INSERT INTO usuarios (nombre, correo, colegio, telefono, tipo)
-                VALUES (?,?,?,?,?)`;
+  const sqlU = `INSERT INTO usuarios (nombre, correo, colegio, telefono, tipo) VALUES (?,?,?,?,?)`;
   db.query(sqlU, [nombre, correo, colegio, telefono, tipo], (err, r) => {
     if (err) { console.error(err); return res.json({ success:false }); }
+
     const idUsuario = r.insertId;
 
     if (actividades.length) {
@@ -167,8 +144,20 @@ app.post('/api/inscribir', (req, res) => {
     }
 
     const textoQR = `USER-${idUsuario}`;
-    QRCode.toDataURL(textoQR, { errorCorrectionLevel:'H' }, (errQR, dataURL) => {
+    QRCode.toDataURL(textoQR, { errorCorrectionLevel: 'H' }, (errQR, dataURL) => {
       if (!errQR) db.query('UPDATE usuarios SET qr=? WHERE id=?', [dataURL, idUsuario]);
+
+      let attachment;
+      try {
+        const b64 = dataURL.split(',')[1];
+        attachment = Buffer.from(b64, 'base64');
+      } catch {
+        attachment = null;
+      }
+
+      const htmlImg = attachment
+        ? `<img src="cid:qrimg" width="160" height="160" style="display:block;border:0;">`
+        : `<img src="${dataURL}" width="160" height="160" style="display:block;border:0;">`;
 
       const mailOptions = {
         from: `"Congreso de Tecnología" <${process.env.SMTP_USER}>`,
@@ -176,10 +165,15 @@ app.post('/api/inscribir', (req, res) => {
         subject: 'Tu código QR de asistencia',
         html: `<p>Hola <strong>${nombre}</strong>:</p>
                <p>Presenta este código al ingresar:</p>
-               <img src="${dataURL}" style="width:160px;height:160px;">`
+               ${htmlImg}`,
+        attachments: attachment ? [
+          { filename: 'qr.png', content: attachment, cid: 'qrimg' }
+        ] : []
       };
-      transporter.sendMail(mailOptions, (e) => {
+
+      transporter.sendMail(mailOptions, (e, info) => {
         if (e) console.error('✉️ Error enviando QR:', e.message);
+        else console.log('✉️ QR enviado:', info.response);
       });
 
       res.json({ success:true });
@@ -312,7 +306,6 @@ app.post('/api/enviar-diploma/:id', (req, res) => {
   });
 });
 
-/* ========= Start ========= */
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });
