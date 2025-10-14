@@ -84,11 +84,13 @@ async function enviarEmail({ to, subject, html, attachments = [] }) {
     to: Array.isArray(to) ? to : [to],
     subject,
     html,
-    attachments 
+    reply_to: process.env.REPLY_TO || 'tu_gmail@correo.com', // <— aquí
+    attachments
   });
   if (error) throw new Error(error.message || 'Error enviando correo');
   return data;
 }
+
 
 async function enviarQRConResend({ to, nombre, qrBuffer }) {
   const html = `
