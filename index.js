@@ -84,7 +84,7 @@ async function enviarEmail({ to, subject, html, attachments = [] }) {
     to: Array.isArray(to) ? to : [to],
     subject,
     html,
-    reply_to: process.env.REPLY_TO || 'bardales02bryan@gmail.com', // <— aquí
+    reply_to: process.env.REPLY_TO || 'bardales02bryan@gmail.com', 
     attachments
   });
   if (error) throw new Error(error.message || 'Error enviando correo');
